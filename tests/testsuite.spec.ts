@@ -1,9 +1,65 @@
 import { test, expect } from '@playwright/test';
 import { faker } from '@faker-js/faker'
-import { title } from 'process';
+import { APIHelper } from './apiHelpers';
+import { generateRandomPostPayload } from './testData';
+import exp from 'constants';
 
 
-test.describe("Test suite backend v1", () => {
+const BASE_URL =`http://localhost:3000`;
+
+test.describe("Test suite backend v2", () => {
+ let apiHelper: APIHelper;
+
+  test.beforeAll(() => {
+    apiHelper = new APIHelper(BASE_URL);
+  })
+
+  test('Test case 01 - Get all posts v2', async ({ request }) => {
+    const getPosts = await apiHelper.getAllPosts(request);
+    expect(getPosts.ok()).toBeTruthy();
+ });
+
+  test('Test case 02 - create posts v2', async ({ request }) => {
+    const payload = generateRandomPostPayload();
+    const CreatePostResponse = await apiHelper.createPost(request, payload);
+    expect(CreatePostResponse.ok()).toBeTruthy();
+   
+    // veifying from the POST request
+    expect(await CreatePostResponse.json()).toMatchObject({
+      title: payload.title,
+      views: payload.views
+    })
+    // veifying from the GET request
+    const getPosts = await apiHelper.getAllPosts(request);
+    expect(getPosts.ok()).toBeTruthy();
+    expect(await getPosts.json()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: payload.title,
+          views: payload.views,
+        })
+      ])
+    )
+  });
+
+  test('Test case 03 - Delete Post - v2', async ({ request }) => {
+    const getPosts = await apiHelper.getAllPosts(request);
+    expect(getPosts.ok()).toBeTruthy();
+    const allPosts = await getPosts.json();
+    const lastButOneID = allPosts[allPosts.length - 2].id;
+
+    // DELETE request
+    const deleteRequest = await apiHelper.deletePost(request, lastButOneID);
+    expect(deleteRequest.ok()).toBeTruthy();
+
+    //GET by ID status as 404
+    const getPostById = await apiHelper.getByID(request, lastButOneID);
+    expect(getPostById.status()).toBe(404);
+
+
+ });
+
+  /** 
   test('Test case 01 - Get all posts', async ({ request }) => {
     const getPostResponse = await request.get("http://localhost:3000/posts");
     expect (getPostResponse.ok()).toBeTruthy();
@@ -60,7 +116,7 @@ test.describe("Test suite backend v1", () => {
      //Verify that the element is gone
      const deletedElementResponse = await request.get(`http://localhost:3000/posts/${lastButOnePostID}`);
      expect (deletedElementResponse.status()).toBe(404);
-    });
+    });*/
 })
 
 
